@@ -1,6 +1,9 @@
 <?php
 
+header( 'Content-Type: application/rss+xml; charset=utf-8' );
+
 require_once( 'config.php' );
+require_once( 'LogMemory.php' );
 require_once( 'GoogleHandler.php' );
 require_once( 'RSSFeed.php' );
 
@@ -13,9 +16,7 @@ if( !$gh->hasRefreshToken() ) {
 
 $feed_data = $gh->queryYouTube();
 $rss = new RSSFeed( $feed_data );
-
-$path_parts = explode( '?', $_SERVER['REQUEST_URI'], 2 );
-$rss_link = 'http://' . $_SERVER['HTTP_HOST'] . $path_parts[0];
+$rss_link = GoogleHandler::getServerURL();
 
 echo '<?xml version="1.0" encoding="utf-8"?>' . PHP_EOL;
 

@@ -1,6 +1,7 @@
 <?php
 
 require_once( 'config.php' );
+require_once( 'LogMemory.php' );
 require_once( 'GoogleHandler.php' );
 
 $gh = new GoogleHandler();
@@ -15,21 +16,60 @@ if( isset( $_GET['code'] ) ) {
 <html>
 <head>
 	<meta charset="utf-8" />
-	<title>YouTube – new subscription videos</title>
+	<title>YouTube – New Subscription Videos</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<link rel="stylesheet" href="bootstrap-3.2.0/css/bootstrap.min.css" />
+	<style>
+		.label {
+			margin-right: 8px;
+		}
+		.panel {
+			display: inline-block;
+			min-width: 400px;
+		}
+		.panel textarea {
+			background-color: #fafafa;
+			border: 1px solid #e0e0e0;
+			border-radius: 4px;
+			box-sizing: border-box;
+			font-family: monospace;
+			font-size: 12px;
+			min-height: 80px;
+			padding: 10px;
+			resize: vertical;
+			width: 100%;
+		}
+	</style>
 </head>
 <body>
 
-<?php if( !$gh->hasRefreshToken() ): ?>
+<div class="container">
+	<div class="page-header">
+		<h1>YouTube – New Subscription Videos</h1>
+	</div>
 
-<a href="<?php echo $gh->getLink(); ?>">obtain access token</a>
+	<?php
+		if( LogMemory::hasErrors() ) {
+			LogMemory::printErrors();
+		}
+	?>
 
-<?php else: ?>
+	<?php if( !$gh->hasRefreshToken() ): ?>
 
-<p>Valid access token found. You can view your RSS feed of new subscription videos here:</p>
+	<h3>
+		<span class="label label-danger">No access token</span>
+		<a href="<?php echo $gh->getLink(); ?>">Obtain access token.</a>
+	</h3>
 
-<p><a href="rss.php">rss.php</a></p>
+	<?php else: ?>
 
-<?php endif ?>
+	<h3>
+		<span class="label label-success">Access token found</span>
+		<a href="rss.php">View your RSS feed.</a>
+	</h3>
+
+	<?php endif ?>
+</div>
 
 </body>
 </html>

@@ -3,13 +3,9 @@
 class GoogleHandler {
 
 
-	protected $oauth_accesstype = 'offline';
-	protected $oauth_redirect = '';
-	protected $oauth_responsetype = 'code';
-	protected $oauth_scope = 'https://www.googleapis.com/auth/youtube.readonly';
-	protected $oauth_url = 'https://accounts.google.com/o/oauth2/auth';
-
 	protected $oauth_google_link = '';
+	protected $oauth_redirect = '';
+
 	protected $access_token = '';
 	protected $refresh_token = '';
 
@@ -18,9 +14,7 @@ class GoogleHandler {
 	 * Constructor.
 	 */
 	public function GoogleHandler() {
-		$path_parts = explode( '?', $_SERVER['REQUEST_URI'], 2 );
-		$this->oauth_redirect = 'http://' . $_SERVER['HTTP_HOST'] . $path_parts[0];
-
+		$this->oauth_redirect = self::getServerURL();
 		$this->refresh_token = $this->loadRefreshToken();
 	}
 
@@ -29,12 +23,13 @@ class GoogleHandler {
 	 * Build the OAuth URL for use in a hyperlink.
 	 */
 	protected function buildLink() {
-		$this->oauth_google_link = $this->oauth_url;
+		$this->oauth_google_link = OAUTH_URL;
 		$this->oauth_google_link .= '?client_id=' . urlencode( OAUTH_CLIENTID );
-		$this->oauth_google_link .= '&amp;access_type=' . urlencode( $this->oauth_accesstype );
+		$this->oauth_google_link .= '&amp;access_type=' . urlencode( OAUTH_ACCESSTYPE );
+		$this->oauth_google_link .= '&amp;approval_prompt=' . urlencode( OAUTH_APPROVALPROMPT );
 		$this->oauth_google_link .= '&amp;redirect_uri=' . urlencode( $this->oauth_redirect );
-		$this->oauth_google_link .= '&amp;response_type=' . urlencode( $this->oauth_responsetype );
-		$this->oauth_google_link .= '&amp;scope=' . urlencode( $this->oauth_scope );
+		$this->oauth_google_link .= '&amp;response_type=' . urlencode( OAUTH_RESPONSETYPE );
+		$this->oauth_google_link .= '&amp;scope=' . urlencode( OAUTH_SCOPE );
 	}
 
 
@@ -52,6 +47,18 @@ class GoogleHandler {
 
 
 	/**
+	 * Get the path of this directory, but without any parameters.
+	 * @return {string} Server URL with path.
+	 */
+	static public function getServerURL() {
+		$path_parts = explode( '?', $_SERVER['REQUEST_URI'], 2 );
+		$protocoll = ( !empty( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] != 'off' ) ? 'https' : 'http';
+
+		return $protocoll . '://' . $_SERVER['HTTP_HOST'] . $path_parts[0];
+	}
+
+
+	/**
 	 * Check if a refresh token exists. It is however unknown if this token is valid.
 	 * @return boolean True, if a refresh tokens exists, false otherwise.
 	 */
@@ -65,6 +72,10 @@ class GoogleHandler {
 	 * @return {string} The refresh token or an empty string on error.
 	 */
 	protected function loadRefreshToken() {
+		if( !file_exists( OAUTH_REFRESHTOKEN_FILE ) ) {
+			return '';
+		}
+
 		$rt_handle = fopen( OAUTH_REFRESHTOKEN_FILE, 'rb' );
 
 		if( $rt_handle === false ) {
@@ -85,16 +96,16 @@ class GoogleHandler {
 	}
 
 
+	/**
+	 * Query YouTube API for activities list.
+	 * @return {array} Activities list as array.
+	 */
 	public function queryYouTube() {
-		$ytapi_maxresults = 50;
-
-		$ytapi_url = 'https://www.googleapis.com/youtube/v3/activities';
+		$ytapi_url = YT_API_URL;
 		$ytapi_url .= '?part=snippet';
 		$ytapi_url .= '&home=true';
-		$ytapi_url .= '&maxResults=' . $ytapi_maxresults;
+		$ytapi_url .= '&maxResults=' . YT_API_MAXRESULTS;
 		$ytapi_url .= '&key=' . OAUTH_CLIENTID;
-
-		$filter_type = 'upload';
 
 		$this->requestAccessToken();
 		$auth_header = array( 'Authorization: Bearer ' . urlencode( $this->access_token ) );
@@ -112,9 +123,10 @@ class GoogleHandler {
 	}
 
 
+	/**
+	 * Request an access token from the OAuth API.
+	 */
 	protected function requestAccessToken() {
-		$url = 'https://accounts.google.com/o/oauth2/token';
-
 		$post_data = array(
 			'client_id' => OAUTH_CLIENTID,
 			'client_secret' => OAUTH_CLIENTSECRET,
@@ -129,17 +141,14 @@ class GoogleHandler {
 		curl_setopt( $curl_handle, CURLOPT_POST, true );
 		curl_setopt( $curl_handle, CURLOPT_POSTFIELDS, $post_query );
 		curl_setopt( $curl_handle, CURLOPT_RETURNTRANSFER, true );
-		curl_setopt( $curl_handle, CURLOPT_URL, $url );
+		curl_setopt( $curl_handle, CURLOPT_URL, OAUTH_TOKENURL );
 		$answer = curl_exec( $curl_handle );
 		curl_close( $curl_handle );
 
 		$json = json_decode( $answer, true );
 
 		if( !isset( $json['access_token'] ) ) {
-			echo '<div class="error">';
-			echo '<span>Did not receive access token.</span>';
-			echo '<textarea readonly>' . htmlspecialchars( $answer ) . '</textarea>';
-			echo '</div>';
+			LogMemory::error( 'Did not receive access token.', htmlspecialchars( $answer ) );
 			return;
 		}
 
@@ -149,11 +158,9 @@ class GoogleHandler {
 
 	/**
 	 * Request the authentication and refresh token for the received code.
-	 * @param  {string} $code Received OAuth code.
+	 * @param {string} $code Received OAuth code.
 	 */
 	public function requestTokens( $code ) {
-		$url = 'https://accounts.google.com/o/oauth2/token';
-
 		$post_data = array(
 			'client_id' => OAUTH_CLIENTID,
 			'client_secret' => OAUTH_CLIENTSECRET,
@@ -169,17 +176,14 @@ class GoogleHandler {
 		curl_setopt( $curl_handle, CURLOPT_POST, true );
 		curl_setopt( $curl_handle, CURLOPT_POSTFIELDS, $post_query );
 		curl_setopt( $curl_handle, CURLOPT_RETURNTRANSFER, true );
-		curl_setopt( $curl_handle, CURLOPT_URL, $url );
+		curl_setopt( $curl_handle, CURLOPT_URL, OAUTH_TOKENURL );
 		$answer = curl_exec( $curl_handle );
 		curl_close( $curl_handle );
 
 		$json = json_decode( $answer, true );
 
 		if( !isset( $json['access_token'] ) || !isset( $json['refresh_token'] ) ) {
-			echo '<div class="error">';
-			echo '<span>Did not receive tokens.</span>';
-			echo '<textarea readonly>' . htmlspecialchars( $answer ) . '</textarea>';
-			echo '</div>';
+			LogMemory::error( 'Did not receive tokens.', htmlspecialchars( $answer ) );
 			return;
 		}
 
@@ -192,17 +196,21 @@ class GoogleHandler {
 
 	/**
 	 * Save the refresh token to file.
-	 * @param  {string} $refresh_token The refresh token.
+	 * @param {string} $refresh_token The refresh token.
 	 */
 	protected function saveRefreshToken( $refresh_token ) {
 		$rt_handle = fopen( OAUTH_REFRESHTOKEN_FILE, 'w+b' );
+
+		if( $rt_handle === false ) {
+			LogMemory::error( 'Error opening or creating file for refresh token.' );
+			return;
+		}
+
 		$result = fwrite( $rt_handle, $refresh_token );
 		fclose( $rt_handle );
 
 		if( $result === false ) {
-			echo '<div class="error">';
-			echo '<span>Error writing refresh token to file.</span>';
-			echo '</div>';
+			LogMemory::error( 'Error writing refresh token to file.' );
 		}
 	}
 
