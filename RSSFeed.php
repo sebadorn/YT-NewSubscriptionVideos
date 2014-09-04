@@ -8,11 +8,11 @@ class RSSFeed {
 
 	/**
 	 * Constructor.
-	 * @param {array} $feed_data Data to create the RSS feed from.
+	 * @param {array} $feed_items Data to create the RSS feed from.
 	 */
-	public function RSSFeed( $feed_data ) {
+	public function RSSFeed( $feed_items ) {
 		// filter uploads
-		foreach( $feed_data['items'] as $item ) {
+		foreach( $feed_items as $item ) {
 			if( $item['snippet']['type'] == 'upload' ) {
 				array_push( $this->items, $item );
 			}
@@ -28,12 +28,13 @@ class RSSFeed {
 	 * @return {array} Feed item.
 	 */
 	public function nextItem() {
-		if( next( $this->items ) === false ) {
+		if( current( $this->items ) === false ) {
 			return false;
 		}
 
 		$data = current( $this->items );
 		$item = $this->prepareItem( $data );
+		next( $this->items );
 
 		return $item;
 	}

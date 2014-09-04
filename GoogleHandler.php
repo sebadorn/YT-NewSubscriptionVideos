@@ -101,25 +101,47 @@ class GoogleHandler {
 	 * @return {array} Activities list as array.
 	 */
 	public function queryYouTube() {
+		$feed_items = array();
+		$next_page = '';
+
 		$ytapi_url = YT_API_URL;
 		$ytapi_url .= '?part=snippet';
 		$ytapi_url .= '&home=true';
 		$ytapi_url .= '&maxResults=' . YT_API_MAXRESULTS;
 		$ytapi_url .= '&key=' . OAUTH_CLIENTID;
 
+		$url_len = strlen( $ytapi_url );
+
 		$this->requestAccessToken();
 		$auth_header = array( 'Authorization: Bearer ' . urlencode( $this->access_token ) );
 
-		$curl_handle = curl_init();
-		curl_setopt( $curl_handle, CURLOPT_CONNECTTIMEOUT, 4 );
-		curl_setopt( $curl_handle, CURLOPT_HTTPGET, true );
-		curl_setopt( $curl_handle, CURLOPT_HTTPHEADER, $auth_header );
-		curl_setopt( $curl_handle, CURLOPT_RETURNTRANSFER, true );
-		curl_setopt( $curl_handle, CURLOPT_URL, $ytapi_url );
-		$answer = curl_exec( $curl_handle );
-		curl_close( $curl_handle );
+		for( $i = 0; $i < YT_NUMPAGES; $i++ ) {
+			$url = substr( $ytapi_url, 0, $url_len );
 
-		return json_decode( $answer, true );
+			if( $next_page != '' ) {
+				$url .= '&pageToken=' . urlencode( $next_page );
+			}
+
+			$curl_handle = curl_init();
+			curl_setopt( $curl_handle, CURLOPT_CONNECTTIMEOUT, 4 );
+			curl_setopt( $curl_handle, CURLOPT_HTTPGET, true );
+			curl_setopt( $curl_handle, CURLOPT_HTTPHEADER, $auth_header );
+			curl_setopt( $curl_handle, CURLOPT_RETURNTRANSFER, true );
+			curl_setopt( $curl_handle, CURLOPT_URL, $url );
+			$answer = curl_exec( $curl_handle );
+			curl_close( $curl_handle );
+
+			$data = json_decode( $answer, true );
+			$feed_items = array_merge( $feed_items, $data['items'] );
+
+			if( !isset( $data['nextPageToken'] ) || empty( $data['nextPageToken'] ) ) {
+				break;
+			}
+
+			$next_page = $data['nextPageToken'];
+		}
+
+		return $feed_items;
 	}
 
 

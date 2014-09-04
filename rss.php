@@ -14,8 +14,8 @@ if( !$gh->hasRefreshToken() ) {
 	exit;
 }
 
-$feed_data = $gh->queryYouTube();
-$rss = new RSSFeed( $feed_data );
+$feed_items = $gh->queryYouTube();
+$rss = new RSSFeed( $feed_items );
 $rss_link = GoogleHandler::getServerURL();
 
 echo '<?xml version="1.0" encoding="utf-8"?>' . PHP_EOL;

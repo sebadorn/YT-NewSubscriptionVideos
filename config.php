@@ -14,4 +14,5 @@ define( 'RSS_THUMBNAIL_SIZE', 'medium' ); // default, medium, high
 
 define( 'YT_API_MAXRESULTS', 50 );
 define( 'YT_API_URL', 'https://www.googleapis.com/youtube/v3/activities' );
+define( 'YT_NUMPAGES', 2 );
 define( 'YT_VIDEO_URL', 'https://www.youtube.com/watch?v=' );
