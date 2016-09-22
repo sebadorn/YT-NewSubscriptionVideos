@@ -14,7 +14,10 @@ if( !$gh->hasRefreshToken() ) {
 	exit;
 }
 
-$feed_items = $gh->queryYouTube();
+$gh->updateAccessToken();
+$channels = $gh->getSubscriptions();
+$feed_items = $gh->getChannelsActivities( $channels );
+
 $rss = new RSSFeed( $feed_items );
 $rss_link = GoogleHandler::getServerURL();
 

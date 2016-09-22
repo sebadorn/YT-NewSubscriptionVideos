@@ -34,6 +34,48 @@ class GoogleHandler {
 
 
 	/**
+	 * Get the activities of the channel.
+	 * @param  {array} $channels
+	 * @return {array}
+	 */
+	public function getChannelsActivities( $channels ) {
+		$feed_items = array();
+
+		$ytapi_url = YT_API_URL . '/activities';
+		$ytapi_url .= '?part=snippet';
+		$ytapi_url .= '&fields=items%2Fsnippet%2CnextPageToken';
+		$ytapi_url .= '&maxResults=' . YT_API_MAXRESULTS_PER_CHANNEL;
+		$ytapi_url .= '&key=' . OAUTH_CLIENTID;
+
+		$url_len = strlen( $ytapi_url );
+		$num_channels = count( $channels );
+
+		$auth_header = array( 'Authorization: Bearer ' . urlencode( $this->access_token ) );
+
+		for( $i = 0; $i < $num_channels; $i++ ) {
+			$channelId = $channels[$i]['snippet']['resourceId']['channelId'];
+
+			$url = substr( $ytapi_url, 0, $url_len );
+			$url .= '&channelId=' . $channelId;
+
+			$curl_handle = curl_init();
+			curl_setopt( $curl_handle, CURLOPT_CONNECTTIMEOUT, 4 );
+			curl_setopt( $curl_handle, CURLOPT_HTTPGET, true );
+			curl_setopt( $curl_handle, CURLOPT_HTTPHEADER, $auth_header );
+			curl_setopt( $curl_handle, CURLOPT_RETURNTRANSFER, true );
+			curl_setopt( $curl_handle, CURLOPT_URL, $url );
+			$answer = curl_exec( $curl_handle );
+			curl_close( $curl_handle );
+
+			$data = json_decode( $answer, true );
+			$feed_items = array_merge( $feed_items, $data['items'] );
+		}
+
+		return $feed_items;
+	}
+
+
+	/**
 	 * Get the OAuth URL for use in a hyperlink.
 	 * @return {string} The hyperlink URL.
 	 */
@@ -59,8 +101,57 @@ class GoogleHandler {
 
 
 	/**
+	 * Get the channels the user is subscriped to.
+	 * @return {array}
+	 */
+	public function getSubscriptions() {
+		$channels = array();
+		$next_page = '';
+
+		$ytapi_url = YT_API_URL . '/subscriptions';
+		$ytapi_url .= '?part=snippet';
+		$ytapi_url .= '&fields=items%2Fsnippet%2CnextPageToken';
+		$ytapi_url .= '&maxResults=' . YT_API_MAXRESULTS;
+		$ytapi_url .= '&mine=true';
+		$ytapi_url .= '&key=' . OAUTH_CLIENTID;
+
+		$url_len = strlen( $ytapi_url );
+
+		$auth_header = array( 'Authorization: Bearer ' . urlencode( $this->access_token ) );
+
+		for( $i = 0; $i < YT_NUMPAGES; $i++ ) {
+			$url = substr( $ytapi_url, 0, $url_len );
+
+			if( $next_page != '' ) {
+				$url .= '&pageToken=' . urlencode( $next_page );
+			}
+
+			$curl_handle = curl_init();
+			curl_setopt( $curl_handle, CURLOPT_CONNECTTIMEOUT, 4 );
+			curl_setopt( $curl_handle, CURLOPT_HTTPGET, true );
+			curl_setopt( $curl_handle, CURLOPT_HTTPHEADER, $auth_header );
+			curl_setopt( $curl_handle, CURLOPT_RETURNTRANSFER, true );
+			curl_setopt( $curl_handle, CURLOPT_URL, $url );
+			$answer = curl_exec( $curl_handle );
+			curl_close( $curl_handle );
+
+			$data = json_decode( $answer, true );
+			$channels = array_merge( $channels, $data['items'] );
+
+			if( !isset( $data['nextPageToken'] ) || empty( $data['nextPageToken'] ) ) {
+				break;
+			}
+
+			$next_page = $data['nextPageToken'];
+		}
+
+		return $channels;
+	}
+
+
+	/**
 	 * Check if a refresh token exists. It is however unknown if this token is valid.
-	 * @return boolean True, if a refresh tokens exists, false otherwise.
+	 * @return {boolean} True, if a refresh tokens exists, false otherwise.
 	 */
 	public function hasRefreshToken() {
 		return ( strlen( $this->refresh_token ) > 0 );
@@ -104,7 +195,7 @@ class GoogleHandler {
 		$feed_items = array();
 		$next_page = '';
 
-		$ytapi_url = YT_API_URL;
+		$ytapi_url = YT_API_URL . '/activities';
 		$ytapi_url .= '?part=snippet';
 		$ytapi_url .= '&home=true';
 		$ytapi_url .= '&maxResults=' . YT_API_MAXRESULTS;
@@ -112,7 +203,6 @@ class GoogleHandler {
 
 		$url_len = strlen( $ytapi_url );
 
-		$this->requestAccessToken();
 		$auth_header = array( 'Authorization: Bearer ' . urlencode( $this->access_token ) );
 
 		for( $i = 0; $i < YT_NUMPAGES; $i++ ) {
@@ -148,7 +238,7 @@ class GoogleHandler {
 	/**
 	 * Request an access token from the OAuth API.
 	 */
-	protected function requestAccessToken() {
+	public function updateAccessToken() {
 		$post_data = array(
 			'client_id' => OAUTH_CLIENTID,
 			'client_secret' => OAUTH_CLIENTSECRET,

@@ -13,6 +13,7 @@ define( 'OAUTH_URL', 'https://accounts.google.com/o/oauth2/auth' );
 define( 'RSS_THUMBNAIL_SIZE', 'medium' ); // default, medium, high
 
 define( 'YT_API_MAXRESULTS', 50 );
-define( 'YT_API_URL', 'https://www.googleapis.com/youtube/v3/activities' );
+define( 'YT_API_MAXRESULTS_PER_CHANNEL', 20 );
+define( 'YT_API_URL', 'https://www.googleapis.com/youtube/v3' );
 define( 'YT_NUMPAGES', 2 );
 define( 'YT_VIDEO_URL', 'https://www.youtube.com/watch?v=' );

@@ -16,12 +16,6 @@ class RSSFeed {
 			if( $item['snippet']['type'] != 'upload' ) {
 				continue;
 			}
-			// Remove all "Popular on YouTube" entries which suddenly
-			// became part of the result despite me not being subscribed
-			// to the channel and being quite displeased about it.
-			if( $item['snippet']['channelTitle'] == 'Popular on YouTube' ) {
-				continue;
-			}
 
 			array_push( $this->items, $item );
 		}
